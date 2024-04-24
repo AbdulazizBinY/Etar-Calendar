@@ -1,4 +1,4 @@
- /*
+/*
  * Copyright (C) 2010 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -142,7 +142,7 @@ public class CalendarController {
     }
 
     public void sendEventRelatedEvent(Object sender, long eventType, long eventId, long startMillis,
-                                      long endMillis, int x, int y, long selectedMillis) {
+                                    long endMillis, int x, int y, long selectedMillis) {
         // TODO: pass the real allDay status or at least a status that says we don't know the
         // status and have the receiver query the data.
         // The current use of this method for VIEW_EVENT is by the day view to show an EventInfo
@@ -167,7 +167,7 @@ public class CalendarController {
      * @param selectedMillis The time to specify as selected
      */
     public void sendEventRelatedEventWithExtra(Object sender, long eventType, long eventId,
-                                               long startMillis, long endMillis, int x, int y, long extraLong, long selectedMillis) {
+                                            long startMillis, long endMillis, int x, int y, long extraLong, long selectedMillis) {
         sendEventRelatedEventWithExtraWithTitleWithCalendarId(sender, eventType, eventId,
                 startMillis, endMillis, x, y, extraLong, selectedMillis, null, -1);
     }
@@ -189,8 +189,8 @@ public class CalendarController {
      * @param calendarId The id of the calendar which the event belongs to
      */
     public void sendEventRelatedEventWithExtraWithTitleWithCalendarId(Object sender, long eventType,
-                                                                      long eventId, long startMillis, long endMillis, int x, int y, long extraLong,
-                                                                      long selectedMillis, String title, long calendarId) {
+                                                                    long eventId, long startMillis, long endMillis, int x, int y, long extraLong,
+                                                                    long selectedMillis, String title, long calendarId) {
         EventInfo info = new EventInfo();
         info.eventType = eventType;
         if (eventType == EventType.EDIT_EVENT || eventType == EventType.VIEW_EVENT_DETAILS) {
@@ -227,7 +227,7 @@ public class CalendarController {
      * @param viewType  {@link ViewType}
      */
     public void sendEvent(Object sender, long eventType, Time start, Time end, long eventId,
-                          int viewType) {
+                        int viewType) {
         sendEvent(sender, eventType, start, end, start, eventId, viewType, EXTRA_GOTO_TIME, null,
                 null);
     }
@@ -236,13 +236,13 @@ public class CalendarController {
      * sendEvent() variant with extraLong, search query, and search component name.
      */
     public void sendEvent(Object sender, long eventType, Time start, Time end, long eventId,
-                          int viewType, long extraLong, String query, ComponentName componentName) {
+                        int viewType, long extraLong, String query, ComponentName componentName) {
         sendEvent(sender, eventType, start, end, start, eventId, viewType, extraLong, query,
                 componentName);
     }
 
     public void sendEvent(Object sender, long eventType, Time start, Time end, Time selected,
-                          long eventId, int viewType, long extraLong, String query, ComponentName componentName) {
+                        long eventId, int viewType, long extraLong, String query, ComponentName componentName) {
         EventInfo info = new EventInfo();
         info.eventType = eventType;
         info.startTime = start;
