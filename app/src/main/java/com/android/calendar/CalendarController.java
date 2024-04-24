@@ -275,7 +275,34 @@ public class CalendarController {
 
         mPreviousViewType = mViewType;
 
-        // Fix up view if not specified
+        fixUpViewType(event);
+
+        if (DEBUG) {
+            logEventDetails(event);
+        }
+
+        long startMillis = getStartMillis(event);
+
+        setMTime(event, startMillis);
+
+        storeFormattingFlags(event);
+
+        fixUpStartTime(event, startMillis);
+
+        if (DEBUG) {
+            logEventDetails(event);
+        }
+
+        storeEventId(event);
+
+        boolean handled = dispatchEventHandlers(event);
+
+        if (!handled) {
+            launchEventActions(event);
+        }
+    }
+
+    private void fixUpViewType(EventInfo event) {
         if (event.viewType == ViewType.DETAIL) {
             event.viewType = mDetailViewType;
             mViewType = mDetailViewType;
@@ -289,27 +316,30 @@ public class CalendarController {
                 mDetailViewType = mViewType;
             }
         }
+    }
 
-        if (DEBUG) {
-            Log.d(TAG, "vvvvvvvvvvvvvvv");
-            Log.d(TAG, "Start  " + (event.startTime == null ? "null" : event.startTime.toString()));
-            Log.d(TAG, "End    " + (event.endTime == null ? "null" : event.endTime.toString()));
-            Log.d(TAG, "Select " + (event.selectedTime == null ? "null" : event.selectedTime.toString()));
-            Log.d(TAG, "mTime  " + (mTime == null ? "null" : mTime.toString()));
-        }
+    private void logEventDetails(EventInfo event) {
+        Log.d(TAG, "vvvvvvvvvvvvvvv");
+        Log.d(TAG, "Start  " + (event.startTime == null ? "null" : event.startTime.toString()));
+        Log.d(TAG, "End    " + (event.endTime == null ? "null" : event.endTime.toString()));
+        Log.d(TAG, "Select " + (event.selectedTime == null ? "null" : event.selectedTime.toString()));
+        Log.d(TAG, "mTime  " + (mTime == null ? "null" : mTime.toString()));
+        Log.d(TAG, "^^^^^^^^^^^^^^^");
+    }
 
+    private long getStartMillis(EventInfo event) {
         long startMillis = 0;
         if (event.startTime != null) {
             startMillis = event.startTime.toMillis();
         }
+        return startMillis;
+    }
 
-        // Set mTime if selectedTime is set
+    private void setMTime(EventInfo event, long startMillis) {
         if (event.selectedTime != null && event.selectedTime.toMillis() != 0) {
             mTime.set(event.selectedTime);
         } else {
             if (startMillis != 0) {
-                // selectedTime is not set so set mTime to startTime iff it is not
-                // within start and end times
                 long mtimeMillis = mTime.toMillis();
                 if (mtimeMillis < startMillis
                         || (event.endTime != null && mtimeMillis > event.endTime.toMillis())) {
@@ -318,33 +348,28 @@ public class CalendarController {
             }
             event.selectedTime = mTime;
         }
-        // Store the formatting flags if this is an update to the title
+    }
+
+    private void storeFormattingFlags(EventInfo event) {
         if (event.eventType == EventType.UPDATE_TITLE) {
             mDateFlags = event.extraLong;
         }
+    }
 
-        // Fix up start time if not specified
+    private void fixUpStartTime(EventInfo event, long startMillis) {
         if (startMillis == 0) {
             event.startTime = mTime;
         }
-        if (DEBUG) {
-            Log.d(TAG, "Start  " + (event.startTime == null ? "null" : event.startTime.toString()));
-            Log.d(TAG, "End    " + (event.endTime == null ? "null" : event.endTime.toString()));
-            Log.d(TAG, "Select " + (event.selectedTime == null ? "null" : event.selectedTime.toString()));
-            Log.d(TAG, "mTime  " + (mTime == null ? "null" : mTime.toString()));
-            Log.d(TAG, "^^^^^^^^^^^^^^^");
-        }
+    }
 
-        // Store the eventId if we're entering edit event
+    private void storeEventId(EventInfo event) {
         if ((event.eventType
                 & (EventType.CREATE_EVENT | EventType.EDIT_EVENT | EventType.VIEW_EVENT_DETAILS)) != 0) {
-            if (event.id > 0) {
-                mEventId = event.id;
-            } else {
-                mEventId = -1;
-            }
+            mEventId = event.id > 0 ? event.id : -1;
         }
+    }
 
+    private boolean dispatchEventHandlers(EventInfo event) {
         boolean handled = false;
         synchronized (this) {
             mDispatchInProgressCounter++;
@@ -352,9 +377,8 @@ public class CalendarController {
             if (DEBUG) {
                 Log.d(TAG, "sendEvent: Dispatching to " + eventHandlers.size() + " handlers");
             }
-            // Dispatch to event handler(s)
+
             if (mFirstEventHandler != null) {
-                // Handle the 'first' one before handling the others
                 EventHandler handler = mFirstEventHandler.second;
                 if (handler != null && (handler.getSupportedEventTypes() & event.eventType) != 0
                         && !mToBeRemovedEventHandlers.contains(mFirstEventHandler.first)) {
@@ -362,12 +386,12 @@ public class CalendarController {
                     handled = true;
                 }
             }
+
             for (Iterator<Entry<Integer, EventHandler>> handlers = eventHandlers.entrySet().iterator(); handlers
                     .hasNext();) {
                 Entry<Integer, EventHandler> entry = handlers.next();
                 int key = entry.getKey();
                 if (mFirstEventHandler != null && key == mFirstEventHandler.first) {
-                    // If this was the 'first' handler it was already handled
                     continue;
                 }
                 EventHandler eventHandler = entry.getValue();
@@ -384,8 +408,6 @@ public class CalendarController {
             mDispatchInProgressCounter--;
 
             if (mDispatchInProgressCounter == 0) {
-
-                // Deregister removed handlers
                 if (mToBeRemovedEventHandlers.size() > 0) {
                     for (Integer zombie : mToBeRemovedEventHandlers) {
                         eventHandlers.remove(zombie);
@@ -395,11 +417,12 @@ public class CalendarController {
                     }
                     mToBeRemovedEventHandlers.clear();
                 }
-                // Add new handlers
+
                 if (mToBeAddedFirstEventHandler != null) {
                     mFirstEventHandler = mToBeAddedFirstEventHandler;
                     mToBeAddedFirstEventHandler = null;
                 }
+
                 if (mToBeAddedEventHandlers.size() > 0) {
                     for (Entry<Integer, EventHandler> food : mToBeAddedEventHandlers.entrySet()) {
                         eventHandlers.put(food.getKey(), food.getValue());
@@ -407,38 +430,37 @@ public class CalendarController {
                 }
             }
         }
+        return handled;
+    }
 
-        if (!handled) {
-            // Launch Settings
-            if (event.eventType == EventType.LAUNCH_SETTINGS) {
-                launchSettings();
-                return;
-            }
+    private void launchEventActions(EventInfo event) {
+        if (event.eventType == EventType.LAUNCH_SETTINGS) {
+            launchSettings();
+            return;
+        }
 
-            // Create/View/Edit/Delete Event
-            long endTime = (event.endTime == null) ? -1 : event.endTime.toMillis();
-            if (event.eventType == EventType.CREATE_EVENT) {
-                launchCreateEvent(event.startTime.toMillis(), endTime,
-                        event.extraLong == EXTRA_CREATE_ALL_DAY, event.eventTitle,
-                        event.calendarId);
-                return;
-            } else if (event.eventType == EventType.VIEW_EVENT) {
-                launchViewEvent(event.id, event.startTime.toMillis(), endTime,
-                        event.getResponse());
-                return;
-            } else if (event.eventType == EventType.EDIT_EVENT) {
-                launchEditEvent(event.id, event.startTime.toMillis(), endTime, true);
-                return;
-            } else if (event.eventType == EventType.VIEW_EVENT_DETAILS) {
-                launchEditEvent(event.id, event.startTime.toMillis(), endTime, false);
-                return;
-            } else if (event.eventType == EventType.DELETE_EVENT) {
-                launchDeleteEvent(event.id, event.startTime.toMillis(), endTime);
-                return;
-            } else if (event.eventType == EventType.SEARCH) {
-                launchSearch(event.id, event.query, event.componentName);
-                return;
-            }
+        long endTime = (event.endTime == null) ? -1 : event.endTime.toMillis();
+        if (event.eventType == EventType.CREATE_EVENT) {
+            launchCreateEvent(event.startTime.toMillis(), endTime,
+                    event.extraLong == EXTRA_CREATE_ALL_DAY, event.eventTitle,
+                    event.calendarId);
+            return;
+        } else if (event.eventType == EventType.VIEW_EVENT) {
+            launchViewEvent(event.id, event.startTime.toMillis(), endTime,
+                    event.getResponse());
+            return;
+        } else if (event.eventType == EventType.EDIT_EVENT) {
+            launchEditEvent(event.id, event.startTime.toMillis(), endTime, true);
+            return;
+        } else if (event.eventType == EventType.VIEW_EVENT_DETAILS) {
+            launchEditEvent(event.id, event.startTime.toMillis(), endTime, false);
+            return;
+        } else if (event.eventType == EventType.DELETE_EVENT) {
+            launchDeleteEvent(event.id, event.startTime.toMillis(), endTime);
+            return;
+        } else if (event.eventType == EventType.SEARCH) {
+            launchSearch(event.id, event.query, event.componentName);
+            return;
         }
     }
 
