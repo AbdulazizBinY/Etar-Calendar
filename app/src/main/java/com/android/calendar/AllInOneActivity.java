@@ -268,7 +268,7 @@ public class AllInOneActivity extends AbstractCalendarActivity implements EventH
         AlertService.createChannels(this);
         long timeMillis = getTimeMillis(icicle);
         int viewType = getViewType(icicle, timeMillis);
-        mTimeZone = getTimeZone();
+        mTimeZone = getTimeZone(timeMillis);
         setupResources();
         setContentViewAndBindings();
         setupToolbar(viewType);
@@ -285,19 +285,13 @@ public class AllInOneActivity extends AbstractCalendarActivity implements EventH
         if (icicle != null) {
             timeMillis = icicle.getLong(BUNDLE_KEY_RESTORE_TIME);
         } else {
-            timeMillis = getTimeMillisFromIntent(intent);
-        }
-        return timeMillis;
-    }
-    
-    private long getTimeMillisFromIntent(Intent intent) {
-        long timeMillis = -1;
-        String action = intent.getAction();
-        if (Intent.ACTION_VIEW.equals(action)) {
-            timeMillis = parseViewAction(intent);
-        }
-        if (timeMillis == -1) {
-            timeMillis = Utils.timeFromIntentInMillis(intent);
+            String action = intent.getAction();
+            if (Intent.ACTION_VIEW.equals(action)) {
+                timeMillis = parseViewAction(intent);
+            }
+            if (timeMillis == -1) {
+                timeMillis = Utils.timeFromIntentInMillis(intent);
+            }
         }
         return timeMillis;
     }
@@ -309,10 +303,13 @@ public class AllInOneActivity extends AbstractCalendarActivity implements EventH
         } else {
             viewType = Utils.getViewTypeFromIntentAndSharedPref(this);
         }
-        return Utils.ensureValidViewType(viewType);
+        if (viewType == -1 || viewType > ViewType.MAX_VALUE) {
+            viewType = Utils.getViewTypeFromIntentAndSharedPref(this);
+        }
+        return viewType;
     }
     
-    private String getTimeZone() {
+    private String getTimeZone(long timeMillis) {
         return Utils.getTimeZone(this, mHomeTimeUpdater);
     }
     
@@ -321,85 +318,56 @@ public class AllInOneActivity extends AbstractCalendarActivity implements EventH
         mHideString = res.getString(R.string.hide_controls);
         mShowString = res.getString(R.string.show_controls);
         mOrientation = res.getConfiguration().orientation;
-        setupControlsAnimateWidth(res);
+        if (mOrientation == Configuration.ORIENTATION_LANDSCAPE) {
+            mControlsAnimateWidth = (int) res.getDimension(R.dimen.calendar_controls_width);
+            if (mControlsParams == null) {
+                mControlsParams = new LayoutParams(mControlsAnimateWidth, 0);
+            }
+            mControlsParams.addRule(RelativeLayout.ALIGN_PARENT_RIGHT);
+        } else {
+            mControlsAnimateWidth = Math.max(res.getDisplayMetrics().widthPixels * 45 / 100,
+                    (int) res.getDimension(R.dimen.min_portrait_calendar_controls_width));
+            mControlsAnimateWidth = Math.min(mControlsAnimateWidth,
+                    (int) res.getDimension(R.dimen.max_portrait_calendar_controls_width));
+        }
         mControlsAnimateHeight = (int) res.getDimension(R.dimen.calendar_controls_height);
-        mHideControls = !Utils.getSharedPreference(this, GeneralPreferences.KEY_SHOW_CONTROLS, true);
+        mHideControls = !Utils.getSharedPreference(
+                this, GeneralPreferences.KEY_SHOW_CONTROLS, true);
         mIsMultipane = Utils.getConfigBool(this, R.bool.multiple_pane_config);
         mIsTabletConfig = Utils.getConfigBool(this, R.bool.tablet_config);
         mShowAgendaWithMonth = Utils.getConfigBool(this, R.bool.show_agenda_with_month);
-        mShowCalendarControls = Utils.getConfigBool(this, R.bool.show_calendar_controls);
-        mShowEventDetailsWithAgenda = Utils.getConfigBool(this, R.bool.show_event_details_with_agenda);
-        mShowEventInfoFullScreenAgenda = Utils.getConfigBool(this, R.bool.agenda_show_event_info_full_screen);
-        mShowEventInfoFullScreen = Utils.getConfigBool(this, R.bool.show_event_info_full_screen);
+        mShowCalendarControls =
+                Utils.getConfigBool(this, R.bool.show_calendar_controls);
+        mShowEventDetailsWithAgenda =
+                Utils.getConfigBool(this, R.bool.show_event_details_with_agenda);
+        mShowEventInfoFullScreenAgenda =
+                Utils.getConfigBool(this, R.bool.agenda_show_event_info_full_screen);
+        mShowEventInfoFullScreen =
+                Utils.getConfigBool(this, R.bool.show_event_info_full_screen);
         mCalendarControlsAnimationTime = res.getInteger(R.integer.calendar_controls_animation_time);
         Utils.setAllowWeekForDetailView(mIsMultipane);
-    }
-    
-    private void setupControlsAnimateWidth(Resources res) {
-        if (mOrientation == Configuration.ORIENTATION_LANDSCAPE) {
-            mControlsAnimateWidth = (int) res.getDimension(R.dimen.calendar_controls_width);
-            setupControlsParams();
-        } else {
-            setupPortraitCalendarControlsWidth(res);
-        }
-    }
-    
-    private void setupControlsParams() {
-        if (mControlsParams == null) {
-            mControlsParams = new LayoutParams(mControlsAnimateWidth, 0);
-        }
-        mControlsParams.addRule(RelativeLayout.ALIGN_PARENT_RIGHT);
-    }
-    
-    private void setupPortraitCalendarControlsWidth(Resources res) {
-        int screenWidth = res.getDisplayMetrics().widthPixels;
-        mControlsAnimateWidth = Math.max(screenWidth * 45 / 100, (int) res.getDimension(R.dimen.min_portrait_calendar_controls_width));
-        mControlsAnimateWidth = Math.min(mControlsAnimateWidth, (int) res.getDimension(R.dimen.max_portrait_calendar_controls_width));
     }
     
     private void setContentViewAndBindings() {
         binding = AllInOneMaterialBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
-        initViews();
-    }
-    
-    private void initViews() {
         mDrawerLayout = binding.drawerLayout;
         mNavigationView = binding.navigationView;
         mFab = binding.floatingActionButton;
-        setupDateRangeAndWeekTextView();
-        setupHomeTimeAndMiniMonth();
-        setupMiniMonthContainerAndCalendarsList();
-        setupSecondaryPane();
-    }
-    
-    private void setupDateRangeAndWeekTextView() {
         if (mIsTabletConfig) {
             mDateRange = binding.include.dateBar;
             mWeekTextView = binding.include.weekNum;
         } else {
             mDateRange = DateRangeTitleBinding.inflate(getLayoutInflater()).getRoot();
         }
-    }
-    
-    private void setupHomeTimeAndMiniMonth() {
         mHomeTime = binding.include.homeTime;
         mMiniMonth = binding.include.miniMonth;
-        setupMiniMonthLayoutParams();
-    }
-    
-    private void setupMiniMonthLayoutParams() {
         if (mIsTabletConfig && mOrientation == Configuration.ORIENTATION_PORTRAIT) {
-            mMiniMonth.setLayoutParams(new RelativeLayout.LayoutParams(mControlsAnimateWidth, mControlsAnimateHeight));
+            mMiniMonth.setLayoutParams(new RelativeLayout.LayoutParams(mControlsAnimateWidth,
+                    mControlsAnimateHeight));
         }
-    }
-    
-    private void setupMiniMonthContainerAndCalendarsList() {
-        mMiniMonthContainer = binding.include.miniMonthContainer;
         mCalendarsList = binding.include.calendarList;
-    }
-    
-    private void setupSecondaryPane() {
+        mMiniMonthContainer = binding.include.miniMonthContainer;
         mSecondaryPane = binding.include.secondaryPane;
     }
     
