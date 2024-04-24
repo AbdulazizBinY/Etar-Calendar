@@ -1,4 +1,3 @@
-/*
  * Copyright (C) 2010 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -256,191 +255,212 @@ public class CalendarController {
         this.sendEvent(sender, info);
     }
 
-    public void sendEvent(Object sender, final EventInfo event) {
-        // TODO Throw exception on invalid events
+    ublic void sendEvent(Object sender, final EventInfo event) {
+    // TODO Throw exception on invalid events
+
+    if (DEBUG) {
+        Log.d(TAG, eventInfoToString(event));
+    }
+
+    Long filteredTypes = filters.get(sender);
+    if (filteredTypes != null && (filteredTypes.longValue() & event.eventType) != 0) {
+        // Suppress event per filter
+        if (DEBUG) {
+            Log.d(TAG, "Event suppressed");
+        }
+        return;
+    }
+
+    mPreviousViewType = mViewType;
+
+    fixUpViewType(event);
+
+    if (DEBUG) {
+        logEventDetails(event);
+    }
+
+    long startMillis = getStartMillis(event);
+
+    setMTime(event, startMillis);
+
+    storeFormattingFlags(event);
+
+    fixUpStartTime(event, startMillis);
+
+    if (DEBUG) {
+        logEventDetails(event);
+    }
+
+    storeEventId(event);
+
+    boolean handled = dispatchEventHandlers(event);
+
+    if (!handled) {
+        launchEventActions(event);
+    }
+}
+
+private void fixUpViewType(EventInfo event) {
+    if (event.viewType == ViewType.DETAIL) {
+        event.viewType = mDetailViewType;
+        mViewType = mDetailViewType;
+    } else if (event.viewType == ViewType.CURRENT) {
+        event.viewType = mViewType;
+    } else if (event.viewType != ViewType.EDIT) {
+        mViewType = event.viewType;
+
+        if (event.viewType == ViewType.AGENDA || event.viewType == ViewType.DAY
+                || (Utils.getAllowWeekForDetailView() && event.viewType == ViewType.WEEK)) {
+            mDetailViewType = mViewType;
+        }
+    }
+}
+
+private void logEventDetails(EventInfo event) {
+    Log.d(TAG, "vvvvvvvvvvvvvvv");
+    Log.d(TAG, "Start  " + (event.startTime == null ? "null" : event.startTime.toString()));
+    Log.d(TAG, "End    " + (event.endTime == null ? "null" : event.endTime.toString()));
+    Log.d(TAG, "Select " + (event.selectedTime == null ? "null" : event.selectedTime.toString()));
+    Log.d(TAG, "mTime  " + (mTime == null ? "null" : mTime.toString()));
+    Log.d(TAG, "^^^^^^^^^^^^^^^");
+}
+
+private long getStartMillis(EventInfo event) {
+    long startMillis = 0;
+    if (event.startTime != null) {
+        startMillis = event.startTime.toMillis();
+    }
+    return startMillis;
+}
+
+private void setMTime(EventInfo event, long startMillis) {
+    if (event.selectedTime != null && event.selectedTime.toMillis() != 0) {
+        mTime.set(event.selectedTime);
+    } else {
+        if (startMillis != 0) {
+            long mtimeMillis = mTime.toMillis();
+            if (mtimeMillis < startMillis
+                    || (event.endTime != null && mtimeMillis > event.endTime.toMillis())) {
+                mTime.set(event.startTime);
+            }
+        }
+        event.selectedTime = mTime;
+    }
+}
+
+private void storeFormattingFlags(EventInfo event) {
+    if (event.eventType == EventType.UPDATE_TITLE) {
+        mDateFlags = event.extraLong;
+    }
+}
+
+private void fixUpStartTime(EventInfo event, long startMillis) {
+    if (startMillis == 0) {
+        event.startTime = mTime;
+    }
+}
+
+private void storeEventId(EventInfo event) {
+    if ((event.eventType
+            & (EventType.CREATE_EVENT | EventType.EDIT_EVENT | EventType.VIEW_EVENT_DETAILS))
+            != 0) {
+        mEventId = event.id > 0 ? event.id : -1;
+    }
+}
+
+private boolean dispatchEventHandlers(EventInfo event) {
+    boolean handled = false;
+    synchronized (this) {
+        mDispatchInProgressCounter++;
 
         if (DEBUG) {
-            Log.d(TAG, eventInfoToString(event));
+            Log.d(TAG, "sendEvent: Dispatching to " + eventHandlers.size() + " handlers");
         }
 
-        Long filteredTypes = filters.get(sender);
-        if (filteredTypes != null && (filteredTypes.longValue() & event.eventType) != 0) {
-            // Suppress event per filter
-            if (DEBUG) {
-                Log.d(TAG, "Event suppressed");
-            }
-            return;
-        }
-
-        mPreviousViewType = mViewType;
-
-        // Fix up view if not specified
-        if (event.viewType == ViewType.DETAIL) {
-            event.viewType = mDetailViewType;
-            mViewType = mDetailViewType;
-        } else if (event.viewType == ViewType.CURRENT) {
-            event.viewType = mViewType;
-        } else if (event.viewType != ViewType.EDIT) {
-            mViewType = event.viewType;
-
-            if (event.viewType == ViewType.AGENDA || event.viewType == ViewType.DAY
-                    || (Utils.getAllowWeekForDetailView() && event.viewType == ViewType.WEEK)) {
-                mDetailViewType = mViewType;
+        if (mFirstEventHandler != null) {
+            EventHandler handler = mFirstEventHandler.second;
+            if (handler != null && (handler.getSupportedEventTypes() & event.eventType) != 0
+                    && !mToBeRemovedEventHandlers.contains(mFirstEventHandler.first)) {
+                handler.handleEvent(event);
+                handled = true;
             }
         }
 
-        if (DEBUG) {
-            Log.d(TAG, "vvvvvvvvvvvvvvv");
-            Log.d(TAG, "Start  " + (event.startTime == null ? "null" : event.startTime.toString()));
-            Log.d(TAG, "End    " + (event.endTime == null ? "null" : event.endTime.toString()));
-            Log.d(TAG, "Select " + (event.selectedTime == null ? "null" : event.selectedTime.toString()));
-            Log.d(TAG, "mTime  " + (mTime == null ? "null" : mTime.toString()));
-        }
-
-        long startMillis = 0;
-        if (event.startTime != null) {
-            startMillis = event.startTime.toMillis();
-        }
-
-        // Set mTime if selectedTime is set
-        if (event.selectedTime != null && event.selectedTime.toMillis() != 0) {
-            mTime.set(event.selectedTime);
-        } else {
-            if (startMillis != 0) {
-                // selectedTime is not set so set mTime to startTime iff it is not
-                // within start and end times
-                long mtimeMillis = mTime.toMillis();
-                if (mtimeMillis < startMillis
-                        || (event.endTime != null && mtimeMillis > event.endTime.toMillis())) {
-                    mTime.set(event.startTime);
-                }
+        for (Iterator<Entry<Integer, EventHandler>> handlers = eventHandlers.entrySet().iterator(); handlers.hasNext(); ) {
+            Entry<Integer, EventHandler> entry = handlers.next();
+            int key = entry.getKey();
+            if (mFirstEventHandler != null && key == mFirstEventHandler.first) {
+                continue;
             }
-            event.selectedTime = mTime;
-        }
-        // Store the formatting flags if this is an update to the title
-        if (event.eventType == EventType.UPDATE_TITLE) {
-            mDateFlags = event.extraLong;
-        }
-
-        // Fix up start time if not specified
-        if (startMillis == 0) {
-            event.startTime = mTime;
-        }
-        if (DEBUG) {
-            Log.d(TAG, "Start  " + (event.startTime == null ? "null" : event.startTime.toString()));
-            Log.d(TAG, "End    " + (event.endTime == null ? "null" : event.endTime.toString()));
-            Log.d(TAG, "Select " + (event.selectedTime == null ? "null" : event.selectedTime.toString()));
-            Log.d(TAG, "mTime  " + (mTime == null ? "null" : mTime.toString()));
-            Log.d(TAG, "^^^^^^^^^^^^^^^");
-        }
-
-        // Store the eventId if we're entering edit event
-        if ((event.eventType
-                & (EventType.CREATE_EVENT | EventType.EDIT_EVENT | EventType.VIEW_EVENT_DETAILS))
-                != 0) {
-            if (event.id > 0) {
-                mEventId = event.id;
-            } else {
-                mEventId = -1;
-            }
-        }
-
-        boolean handled = false;
-        synchronized (this) {
-            mDispatchInProgressCounter++;
-
-            if (DEBUG) {
-                Log.d(TAG, "sendEvent: Dispatching to " + eventHandlers.size() + " handlers");
-            }
-            // Dispatch to event handler(s)
-            if (mFirstEventHandler != null) {
-                // Handle the 'first' one before handling the others
-                EventHandler handler = mFirstEventHandler.second;
-                if (handler != null && (handler.getSupportedEventTypes() & event.eventType) != 0
-                        && !mToBeRemovedEventHandlers.contains(mFirstEventHandler.first)) {
-                    handler.handleEvent(event);
-                    handled = true;
-                }
-            }
-            for (Iterator<Entry<Integer, EventHandler>> handlers =
-                 eventHandlers.entrySet().iterator(); handlers.hasNext(); ) {
-                Entry<Integer, EventHandler> entry = handlers.next();
-                int key = entry.getKey();
-                if (mFirstEventHandler != null && key == mFirstEventHandler.first) {
-                    // If this was the 'first' handler it was already handled
+            EventHandler eventHandler = entry.getValue();
+            if (eventHandler != null
+                    && (eventHandler.getSupportedEventTypes() & event.eventType) != 0) {
+                if (mToBeRemovedEventHandlers.contains(key)) {
                     continue;
                 }
-                EventHandler eventHandler = entry.getValue();
-                if (eventHandler != null
-                        && (eventHandler.getSupportedEventTypes() & event.eventType) != 0) {
-                    if (mToBeRemovedEventHandlers.contains(key)) {
-                        continue;
-                    }
-                    eventHandler.handleEvent(event);
-                    handled = true;
-                }
-            }
-
-            mDispatchInProgressCounter--;
-
-            if (mDispatchInProgressCounter == 0) {
-
-                // Deregister removed handlers
-                if (mToBeRemovedEventHandlers.size() > 0) {
-                    for (Integer zombie : mToBeRemovedEventHandlers) {
-                        eventHandlers.remove(zombie);
-                        if (mFirstEventHandler != null && zombie.equals(mFirstEventHandler.first)) {
-                            mFirstEventHandler = null;
-                        }
-                    }
-                    mToBeRemovedEventHandlers.clear();
-                }
-                // Add new handlers
-                if (mToBeAddedFirstEventHandler != null) {
-                    mFirstEventHandler = mToBeAddedFirstEventHandler;
-                    mToBeAddedFirstEventHandler = null;
-                }
-                if (mToBeAddedEventHandlers.size() > 0) {
-                    for (Entry<Integer, EventHandler> food : mToBeAddedEventHandlers.entrySet()) {
-                        eventHandlers.put(food.getKey(), food.getValue());
-                    }
-                }
+                eventHandler.handleEvent(event);
+                handled = true;
             }
         }
 
-        if (!handled) {
-            // Launch Settings
-            if (event.eventType == EventType.LAUNCH_SETTINGS) {
-                launchSettings();
-                return;
+        mDispatchInProgressCounter--;
+
+        if (mDispatchInProgressCounter == 0) {
+            if (mToBeRemovedEventHandlers.size() > 0) {
+                for (Integer zombie : mToBeRemovedEventHandlers) {
+                    eventHandlers.remove(zombie);
+                    if (mFirstEventHandler != null && zombie.equals(mFirstEventHandler.first)) {
+                        mFirstEventHandler = null;
+                    }
+                }
+                mToBeRemovedEventHandlers.clear();
             }
 
-            // Create/View/Edit/Delete Event
-            long endTime = (event.endTime == null) ? -1 : event.endTime.toMillis();
-            if (event.eventType == EventType.CREATE_EVENT) {
-                launchCreateEvent(event.startTime.toMillis(), endTime,
-                        event.extraLong == EXTRA_CREATE_ALL_DAY, event.eventTitle,
-                        event.calendarId);
-                return;
-            } else if (event.eventType == EventType.VIEW_EVENT) {
-                launchViewEvent(event.id, event.startTime.toMillis(), endTime,
-                        event.getResponse());
-                return;
-            } else if (event.eventType == EventType.EDIT_EVENT) {
-                launchEditEvent(event.id, event.startTime.toMillis(), endTime, true);
-                return;
-            } else if (event.eventType == EventType.VIEW_EVENT_DETAILS) {
-                launchEditEvent(event.id, event.startTime.toMillis(), endTime, false);
-                return;
-            } else if (event.eventType == EventType.DELETE_EVENT) {
-                launchDeleteEvent(event.id, event.startTime.toMillis(), endTime);
-                return;
-            } else if (event.eventType == EventType.SEARCH) {
-                launchSearch(event.id, event.query, event.componentName);
-                return;
+            if (mToBeAddedFirstEventHandler != null) {
+                mFirstEventHandler = mToBeAddedFirstEventHandler;
+                mToBeAddedFirstEventHandler = null;
+            }
+
+            if (mToBeAddedEventHandlers.size() > 0) {
+                for (Entry<Integer, EventHandler> food : mToBeAddedEventHandlers.entrySet()) {
+                    eventHandlers.put(food.getKey(), food.getValue());
+                }
             }
         }
     }
+    return handled;
+}
+
+private void launchEventActions(EventInfo event) {
+    if (event.eventType == EventType.LAUNCH_SETTINGS) {
+        launchSettings();
+        return;
+    }
+
+    long endTime = (event.endTime == null) ? -1 : event.endTime.toMillis();
+    if (event.eventType == EventType.CREATE_EVENT) {
+        launchCreateEvent(event.startTime.toMillis(), endTime,
+                event.extraLong == EXTRA_CREATE_ALL_DAY, event.eventTitle,
+                event.calendarId);
+        return;
+    } else if (event.eventType == EventType.VIEW_EVENT) {
+        launchViewEvent(event.id, event.startTime.toMillis(), endTime,
+                event.getResponse());
+        return;
+    } else if (event.eventType == EventType.EDIT_EVENT) {
+        launchEditEvent(event.id, event.startTime.toMillis(), endTime, true);
+        return;
+    } else if (event.eventType == EventType.VIEW_EVENT_DETAILS) {
+        launchEditEvent(event.id, event.startTime.toMillis(), endTime, false);
+        return;
+    } else if (event.eventType == EventType.DELETE_EVENT) {
+        launchDeleteEvent(event.id, event.startTime.toMillis(), endTime);
+        return;
+    } else if (event.eventType == EventType.SEARCH) {
+        launchSearch(event.id, event.query, event.componentName);
+        return;
+    }
+}
 
     /**
      * Adds or updates an event handler. This uses a LinkedHashMap so that we can
@@ -855,3 +875,5 @@ public class CalendarController {
         }
     }
 }
+
+
