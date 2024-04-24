@@ -306,7 +306,8 @@ public class AllInOneActivity extends AbstractCalendarActivity implements EventH
                 Log.d(TAG, "not both, icicle:" + icicle + " intent:" + intent);
             }
         }
-
+ 
+        
         Resources res = getResources();
         mHideString = res.getString(R.string.hide_controls);
         mShowString = res.getString(R.string.show_controls);
