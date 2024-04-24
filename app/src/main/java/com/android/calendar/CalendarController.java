@@ -72,17 +72,14 @@ public class CalendarController {
     public static final long EXTRA_GOTO_TODAY = 8;
     private static final boolean DEBUG = false;
     private static final String TAG = "CalendarController";
-    private static WeakHashMap<Context, WeakReference<CalendarController>> instances =
-            new WeakHashMap<Context, WeakReference<CalendarController>>();
+    private static WeakHashMap<Context, WeakReference<CalendarController>> instances = new WeakHashMap<Context, WeakReference<CalendarController>>();
     private final Context mContext;
     // This uses a LinkedHashMap so that we can replace fragments based on the
     // view id they are being expanded into since we can't guarantee a reference
     // to the handler will be findable
-    private final LinkedHashMap<Integer,EventHandler> eventHandlers =
-            new LinkedHashMap<Integer,EventHandler>(5);
+    private final LinkedHashMap<Integer, EventHandler> eventHandlers = new LinkedHashMap<Integer, EventHandler>(5);
     private final LinkedList<Integer> mToBeRemovedEventHandlers = new LinkedList<Integer>();
-    private final LinkedHashMap<Integer, EventHandler> mToBeAddedEventHandlers = new LinkedHashMap<
-            Integer, EventHandler>();
+    private final LinkedHashMap<Integer, EventHandler> mToBeAddedEventHandlers = new LinkedHashMap<Integer, EventHandler>();
     private final WeakHashMap<Object, Long> filters = new WeakHashMap<Object, Long>(1);
     private final Time mTime = new Time();
     private final Runnable mUpdateTimezone = new Runnable() {
@@ -142,10 +139,12 @@ public class CalendarController {
     }
 
     public void sendEventRelatedEvent(Object sender, long eventType, long eventId, long startMillis,
-                                    long endMillis, int x, int y, long selectedMillis) {
-        // TODO: pass the real allDay status or at least a status that says we don't know the
+            long endMillis, int x, int y, long selectedMillis) {
+        // TODO: pass the real allDay status or at least a status that says we don't
+        // know the
         // status and have the receiver query the data.
-        // The current use of this method for VIEW_EVENT is by the day view to show an EventInfo
+        // The current use of this method for VIEW_EVENT is by the day view to show an
+        // EventInfo
         // so currently the missing allDay status has no effect.
         sendEventRelatedEventWithExtra(sender, eventType, eventId, startMillis, endMillis, x, y,
                 EventInfo.buildViewExtraLong(Attendees.ATTENDEE_STATUS_NONE, false),
@@ -155,19 +154,20 @@ public class CalendarController {
     /**
      * Helper for sending New/View/Edit/Delete events
      *
-     * @param sender object of the caller
-     * @param eventType one of {@link EventType}
-     * @param eventId event id
-     * @param startMillis start time
-     * @param endMillis end time
-     * @param x x coordinate in the activity space
-     * @param y y coordinate in the activity space
-     * @param extraLong default response value for the "simple event view" and all day indication.
-     *        Use Attendees.ATTENDEE_STATUS_NONE for no response.
+     * @param sender         object of the caller
+     * @param eventType      one of {@link EventType}
+     * @param eventId        event id
+     * @param startMillis    start time
+     * @param endMillis      end time
+     * @param x              x coordinate in the activity space
+     * @param y              y coordinate in the activity space
+     * @param extraLong      default response value for the "simple event view" and
+     *                       all day indication.
+     *                       Use Attendees.ATTENDEE_STATUS_NONE for no response.
      * @param selectedMillis The time to specify as selected
      */
     public void sendEventRelatedEventWithExtra(Object sender, long eventType, long eventId,
-                                            long startMillis, long endMillis, int x, int y, long extraLong, long selectedMillis) {
+            long startMillis, long endMillis, int x, int y, long extraLong, long selectedMillis) {
         sendEventRelatedEventWithExtraWithTitleWithCalendarId(sender, eventType, eventId,
                 startMillis, endMillis, x, y, extraLong, selectedMillis, null, -1);
     }
@@ -175,22 +175,23 @@ public class CalendarController {
     /**
      * Helper for sending New/View/Edit/Delete events
      *
-     * @param sender object of the caller
-     * @param eventType one of {@link EventType}
-     * @param eventId event id
-     * @param startMillis start time
-     * @param endMillis end time
-     * @param x x coordinate in the activity space
-     * @param y y coordinate in the activity space
-     * @param extraLong default response value for the "simple event view" and all day indication.
-     *        Use Attendees.ATTENDEE_STATUS_NONE for no response.
+     * @param sender         object of the caller
+     * @param eventType      one of {@link EventType}
+     * @param eventId        event id
+     * @param startMillis    start time
+     * @param endMillis      end time
+     * @param x              x coordinate in the activity space
+     * @param y              y coordinate in the activity space
+     * @param extraLong      default response value for the "simple event view" and
+     *                       all day indication.
+     *                       Use Attendees.ATTENDEE_STATUS_NONE for no response.
      * @param selectedMillis The time to specify as selected
-     * @param title The title of the event
-     * @param calendarId The id of the calendar which the event belongs to
+     * @param title          The title of the event
+     * @param calendarId     The id of the calendar which the event belongs to
      */
     public void sendEventRelatedEventWithExtraWithTitleWithCalendarId(Object sender, long eventType,
-                                                                    long eventId, long startMillis, long endMillis, int x, int y, long extraLong,
-                                                                    long selectedMillis, String title, long calendarId) {
+            long eventId, long startMillis, long endMillis, int x, int y, long extraLong,
+            long selectedMillis, String title, long calendarId) {
         EventInfo info = new EventInfo();
         info.eventType = eventType;
         if (eventType == EventType.EDIT_EVENT || eventType == EventType.VIEW_EVENT_DETAILS) {
@@ -227,7 +228,7 @@ public class CalendarController {
      * @param viewType  {@link ViewType}
      */
     public void sendEvent(Object sender, long eventType, Time start, Time end, long eventId,
-                        int viewType) {
+            int viewType) {
         sendEvent(sender, eventType, start, end, start, eventId, viewType, EXTRA_GOTO_TIME, null,
                 null);
     }
@@ -236,13 +237,13 @@ public class CalendarController {
      * sendEvent() variant with extraLong, search query, and search component name.
      */
     public void sendEvent(Object sender, long eventType, Time start, Time end, long eventId,
-                        int viewType, long extraLong, String query, ComponentName componentName) {
+            int viewType, long extraLong, String query, ComponentName componentName) {
         sendEvent(sender, eventType, start, end, start, eventId, viewType, extraLong, query,
                 componentName);
     }
 
     public void sendEvent(Object sender, long eventType, Time start, Time end, Time selected,
-                        long eventId, int viewType, long extraLong, String query, ComponentName componentName) {
+            long eventId, int viewType, long extraLong, String query, ComponentName componentName) {
         EventInfo info = new EventInfo();
         info.eventType = eventType;
         info.startTime = start;
@@ -256,218 +257,196 @@ public class CalendarController {
         this.sendEvent(sender, info);
     }
 
-    ublic void sendEvent(Object sender, final EventInfo event) {
-    // TODO Throw exception on invalid events
-
-    if (DEBUG) {
-        Log.d(TAG, eventInfoToString(event));
-    }
-
-    Long filteredTypes = filters.get(sender);
-    if (filteredTypes != null && (filteredTypes.longValue() & event.eventType) != 0) {
-        // Suppress event per filter
-        if (DEBUG) {
-            Log.d(TAG, "Event suppressed");
-        }
-        return;
-    }
-
-    mPreviousViewType = mViewType;
-
-    fixUpViewType(event);
-
-    if (DEBUG) {
-        logEventDetails(event);
-    }
-
-    long startMillis = getStartMillis(event);
-
-    setMTime(event, startMillis);
-
-    storeFormattingFlags(event);
-
-    fixUpStartTime(event, startMillis);
-
-    if (DEBUG) {
-        logEventDetails(event);
-    }
-
-    storeEventId(event);
-
-    boolean handled = dispatchEventHandlers(event);
-
-    if (!handled) {
-        launchEventActions(event);
-    }
-}
-
-private void fixUpViewType(EventInfo event) {
-    if (event.viewType == ViewType.DETAIL) {
-        event.viewType = mDetailViewType;
-        mViewType = mDetailViewType;
-    } else if (event.viewType == ViewType.CURRENT) {
-        event.viewType = mViewType;
-    } else if (event.viewType != ViewType.EDIT) {
-        mViewType = event.viewType;
-
-        if (event.viewType == ViewType.AGENDA || event.viewType == ViewType.DAY
-                || (Utils.getAllowWeekForDetailView() && event.viewType == ViewType.WEEK)) {
-            mDetailViewType = mViewType;
-        }
-    }
-}
-
-private void logEventDetails(EventInfo event) {
-    Log.d(TAG, "vvvvvvvvvvvvvvv");
-    Log.d(TAG, "Start  " + (event.startTime == null ? "null" : event.startTime.toString()));
-    Log.d(TAG, "End    " + (event.endTime == null ? "null" : event.endTime.toString()));
-    Log.d(TAG, "Select " + (event.selectedTime == null ? "null" : event.selectedTime.toString()));
-    Log.d(TAG, "mTime  " + (mTime == null ? "null" : mTime.toString()));
-    Log.d(TAG, "^^^^^^^^^^^^^^^");
-}
-
-private long getStartMillis(EventInfo event) {
-    long startMillis = 0;
-    if (event.startTime != null) {
-        startMillis = event.startTime.toMillis();
-    }
-    return startMillis;
-}
-
-private void setMTime(EventInfo event, long startMillis) {
-    if (event.selectedTime != null && event.selectedTime.toMillis() != 0) {
-        mTime.set(event.selectedTime);
-    } else {
-        if (startMillis != 0) {
-            long mtimeMillis = mTime.toMillis();
-            if (mtimeMillis < startMillis
-                    || (event.endTime != null && mtimeMillis > event.endTime.toMillis())) {
-                mTime.set(event.startTime);
-            }
-        }
-        event.selectedTime = mTime;
-    }
-}
-
-private void storeFormattingFlags(EventInfo event) {
-    if (event.eventType == EventType.UPDATE_TITLE) {
-        mDateFlags = event.extraLong;
-    }
-}
-
-private void fixUpStartTime(EventInfo event, long startMillis) {
-    if (startMillis == 0) {
-        event.startTime = mTime;
-    }
-}
-
-private void storeEventId(EventInfo event) {
-    if ((event.eventType
-            & (EventType.CREATE_EVENT | EventType.EDIT_EVENT | EventType.VIEW_EVENT_DETAILS))
-            != 0) {
-        mEventId = event.id > 0 ? event.id : -1;
-    }
-}
-
-private boolean dispatchEventHandlers(EventInfo event) {
-    boolean handled = false;
-    synchronized (this) {
-        mDispatchInProgressCounter++;
+    public void sendEvent(Object sender, final EventInfo event) {
+        // TODO Throw exception on invalid events
 
         if (DEBUG) {
-            Log.d(TAG, "sendEvent: Dispatching to " + eventHandlers.size() + " handlers");
+            Log.d(TAG, eventInfoToString(event));
         }
 
-        if (mFirstEventHandler != null) {
-            EventHandler handler = mFirstEventHandler.second;
-            if (handler != null && (handler.getSupportedEventTypes() & event.eventType) != 0
-                    && !mToBeRemovedEventHandlers.contains(mFirstEventHandler.first)) {
-                handler.handleEvent(event);
-                handled = true;
+        Long filteredTypes = filters.get(sender);
+        if (filteredTypes != null && (filteredTypes.longValue() & event.eventType) != 0) {
+            // Suppress event per filter
+            if (DEBUG) {
+                Log.d(TAG, "Event suppressed");
+            }
+            return;
+        }
+
+        mPreviousViewType = mViewType;
+
+        // Fix up view if not specified
+        if (event.viewType == ViewType.DETAIL) {
+            event.viewType = mDetailViewType;
+            mViewType = mDetailViewType;
+        } else if (event.viewType == ViewType.CURRENT) {
+            event.viewType = mViewType;
+        } else if (event.viewType != ViewType.EDIT) {
+            mViewType = event.viewType;
+
+            if (event.viewType == ViewType.AGENDA || event.viewType == ViewType.DAY
+                    || (Utils.getAllowWeekForDetailView() && event.viewType == ViewType.WEEK)) {
+                mDetailViewType = mViewType;
             }
         }
 
-        for (Iterator<Entry<Integer, EventHandler>> handlers = eventHandlers.entrySet().iterator(); handlers.hasNext(); ) {
-            Entry<Integer, EventHandler> entry = handlers.next();
-            int key = entry.getKey();
-            if (mFirstEventHandler != null && key == mFirstEventHandler.first) {
-                continue;
+        if (DEBUG) {
+            Log.d(TAG, "vvvvvvvvvvvvvvv");
+            Log.d(TAG, "Start  " + (event.startTime == null ? "null" : event.startTime.toString()));
+            Log.d(TAG, "End    " + (event.endTime == null ? "null" : event.endTime.toString()));
+            Log.d(TAG, "Select " + (event.selectedTime == null ? "null" : event.selectedTime.toString()));
+            Log.d(TAG, "mTime  " + (mTime == null ? "null" : mTime.toString()));
+        }
+
+        long startMillis = 0;
+        if (event.startTime != null) {
+            startMillis = event.startTime.toMillis();
+        }
+
+        // Set mTime if selectedTime is set
+        if (event.selectedTime != null && event.selectedTime.toMillis() != 0) {
+            mTime.set(event.selectedTime);
+        } else {
+            if (startMillis != 0) {
+                // selectedTime is not set so set mTime to startTime iff it is not
+                // within start and end times
+                long mtimeMillis = mTime.toMillis();
+                if (mtimeMillis < startMillis
+                        || (event.endTime != null && mtimeMillis > event.endTime.toMillis())) {
+                    mTime.set(event.startTime);
+                }
             }
-            EventHandler eventHandler = entry.getValue();
-            if (eventHandler != null
-                    && (eventHandler.getSupportedEventTypes() & event.eventType) != 0) {
-                if (mToBeRemovedEventHandlers.contains(key)) {
+            event.selectedTime = mTime;
+        }
+        // Store the formatting flags if this is an update to the title
+        if (event.eventType == EventType.UPDATE_TITLE) {
+            mDateFlags = event.extraLong;
+        }
+
+        // Fix up start time if not specified
+        if (startMillis == 0) {
+            event.startTime = mTime;
+        }
+        if (DEBUG) {
+            Log.d(TAG, "Start  " + (event.startTime == null ? "null" : event.startTime.toString()));
+            Log.d(TAG, "End    " + (event.endTime == null ? "null" : event.endTime.toString()));
+            Log.d(TAG, "Select " + (event.selectedTime == null ? "null" : event.selectedTime.toString()));
+            Log.d(TAG, "mTime  " + (mTime == null ? "null" : mTime.toString()));
+            Log.d(TAG, "^^^^^^^^^^^^^^^");
+        }
+
+        // Store the eventId if we're entering edit event
+        if ((event.eventType
+                & (EventType.CREATE_EVENT | EventType.EDIT_EVENT | EventType.VIEW_EVENT_DETAILS)) != 0) {
+            if (event.id > 0) {
+                mEventId = event.id;
+            } else {
+                mEventId = -1;
+            }
+        }
+
+        boolean handled = false;
+        synchronized (this) {
+            mDispatchInProgressCounter++;
+
+            if (DEBUG) {
+                Log.d(TAG, "sendEvent: Dispatching to " + eventHandlers.size() + " handlers");
+            }
+            // Dispatch to event handler(s)
+            if (mFirstEventHandler != null) {
+                // Handle the 'first' one before handling the others
+                EventHandler handler = mFirstEventHandler.second;
+                if (handler != null && (handler.getSupportedEventTypes() & event.eventType) != 0
+                        && !mToBeRemovedEventHandlers.contains(mFirstEventHandler.first)) {
+                    handler.handleEvent(event);
+                    handled = true;
+                }
+            }
+            for (Iterator<Entry<Integer, EventHandler>> handlers = eventHandlers.entrySet().iterator(); handlers
+                    .hasNext();) {
+                Entry<Integer, EventHandler> entry = handlers.next();
+                int key = entry.getKey();
+                if (mFirstEventHandler != null && key == mFirstEventHandler.first) {
+                    // If this was the 'first' handler it was already handled
                     continue;
                 }
-                eventHandler.handleEvent(event);
-                handled = true;
+                EventHandler eventHandler = entry.getValue();
+                if (eventHandler != null
+                        && (eventHandler.getSupportedEventTypes() & event.eventType) != 0) {
+                    if (mToBeRemovedEventHandlers.contains(key)) {
+                        continue;
+                    }
+                    eventHandler.handleEvent(event);
+                    handled = true;
+                }
             }
-        }
 
-        mDispatchInProgressCounter--;
+            mDispatchInProgressCounter--;
 
-        if (mDispatchInProgressCounter == 0) {
-            if (mToBeRemovedEventHandlers.size() > 0) {
-                for (Integer zombie : mToBeRemovedEventHandlers) {
-                    eventHandlers.remove(zombie);
-                    if (mFirstEventHandler != null && zombie.equals(mFirstEventHandler.first)) {
-                        mFirstEventHandler = null;
+            if (mDispatchInProgressCounter == 0) {
+
+                // Deregister removed handlers
+                if (mToBeRemovedEventHandlers.size() > 0) {
+                    for (Integer zombie : mToBeRemovedEventHandlers) {
+                        eventHandlers.remove(zombie);
+                        if (mFirstEventHandler != null && zombie.equals(mFirstEventHandler.first)) {
+                            mFirstEventHandler = null;
+                        }
+                    }
+                    mToBeRemovedEventHandlers.clear();
+                }
+                // Add new handlers
+                if (mToBeAddedFirstEventHandler != null) {
+                    mFirstEventHandler = mToBeAddedFirstEventHandler;
+                    mToBeAddedFirstEventHandler = null;
+                }
+                if (mToBeAddedEventHandlers.size() > 0) {
+                    for (Entry<Integer, EventHandler> food : mToBeAddedEventHandlers.entrySet()) {
+                        eventHandlers.put(food.getKey(), food.getValue());
                     }
                 }
-                mToBeRemovedEventHandlers.clear();
+            }
+        }
+
+        if (!handled) {
+            // Launch Settings
+            if (event.eventType == EventType.LAUNCH_SETTINGS) {
+                launchSettings();
+                return;
             }
 
-            if (mToBeAddedFirstEventHandler != null) {
-                mFirstEventHandler = mToBeAddedFirstEventHandler;
-                mToBeAddedFirstEventHandler = null;
-            }
-
-            if (mToBeAddedEventHandlers.size() > 0) {
-                for (Entry<Integer, EventHandler> food : mToBeAddedEventHandlers.entrySet()) {
-                    eventHandlers.put(food.getKey(), food.getValue());
-                }
+            // Create/View/Edit/Delete Event
+            long endTime = (event.endTime == null) ? -1 : event.endTime.toMillis();
+            if (event.eventType == EventType.CREATE_EVENT) {
+                launchCreateEvent(event.startTime.toMillis(), endTime,
+                        event.extraLong == EXTRA_CREATE_ALL_DAY, event.eventTitle,
+                        event.calendarId);
+                return;
+            } else if (event.eventType == EventType.VIEW_EVENT) {
+                launchViewEvent(event.id, event.startTime.toMillis(), endTime,
+                        event.getResponse());
+                return;
+            } else if (event.eventType == EventType.EDIT_EVENT) {
+                launchEditEvent(event.id, event.startTime.toMillis(), endTime, true);
+                return;
+            } else if (event.eventType == EventType.VIEW_EVENT_DETAILS) {
+                launchEditEvent(event.id, event.startTime.toMillis(), endTime, false);
+                return;
+            } else if (event.eventType == EventType.DELETE_EVENT) {
+                launchDeleteEvent(event.id, event.startTime.toMillis(), endTime);
+                return;
+            } else if (event.eventType == EventType.SEARCH) {
+                launchSearch(event.id, event.query, event.componentName);
+                return;
             }
         }
     }
-    return handled;
-}
-
-private void launchEventActions(EventInfo event) {
-    if (event.eventType == EventType.LAUNCH_SETTINGS) {
-        launchSettings();
-        return;
-    }
-
-    long endTime = (event.endTime == null) ? -1 : event.endTime.toMillis();
-    if (event.eventType == EventType.CREATE_EVENT) {
-        launchCreateEvent(event.startTime.toMillis(), endTime,
-                event.extraLong == EXTRA_CREATE_ALL_DAY, event.eventTitle,
-                event.calendarId);
-        return;
-    } else if (event.eventType == EventType.VIEW_EVENT) {
-        launchViewEvent(event.id, event.startTime.toMillis(), endTime,
-                event.getResponse());
-        return;
-    } else if (event.eventType == EventType.EDIT_EVENT) {
-        launchEditEvent(event.id, event.startTime.toMillis(), endTime, true);
-        return;
-    } else if (event.eventType == EventType.VIEW_EVENT_DETAILS) {
-        launchEditEvent(event.id, event.startTime.toMillis(), endTime, false);
-        return;
-    } else if (event.eventType == EventType.DELETE_EVENT) {
-        launchDeleteEvent(event.id, event.startTime.toMillis(), endTime);
-        return;
-    } else if (event.eventType == EventType.SEARCH) {
-        launchSearch(event.id, event.query, event.componentName);
-        return;
-    }
-}
 
     /**
      * Adds or updates an event handler. This uses a LinkedHashMap so that we can
      * replace fragments based on the view id they are being expanded into.
      *
-     * @param key The view id or placeholder for this handler
+     * @param key          The view id or placeholder for this handler
      * @param eventHandler Typically a fragment or activity in the calendar app
      */
     public void registerEventHandler(int key, EventHandler eventHandler) {
@@ -540,7 +519,7 @@ private void launchEventActions(EventInfo event) {
 
     /**
      * @return the last set of date flags sent with
-     * {@link EventType#UPDATE_TITLE}
+     *         {@link EventType#UPDATE_TITLE}
      */
     public long getDateFlags() {
         return mDateFlags;
@@ -579,7 +558,7 @@ private void launchEventActions(EventInfo event) {
     }
 
     private void launchCreateEvent(long startMillis, long endMillis, boolean allDayEvent,
-                                   String title, long calendarId) {
+            String title, long calendarId) {
         Intent intent = generateCreateEventIntent(startMillis, endMillis, allDayEvent, title,
                 calendarId);
         mEventId = -1;
@@ -587,7 +566,7 @@ private void launchEventActions(EventInfo event) {
     }
 
     public Intent generateCreateEventIntent(long startMillis, long endMillis,
-                                            boolean allDayEvent, String title, long calendarId) {
+            boolean allDayEvent, String title, long calendarId) {
         Intent intent = new Intent(Intent.ACTION_VIEW);
         intent.setClass(mContext, EditEventActivity.class);
         intent.putExtra(EXTRA_EVENT_BEGIN_TIME, startMillis);
@@ -626,22 +605,21 @@ private void launchEventActions(EventInfo event) {
     }
 
     private void launchDeleteEventAndFinish(Activity parentActivity, long eventId, long startMillis,
-                                            long endMillis, int deleteWhich) {
+            long endMillis, int deleteWhich) {
         DeleteEventHelper deleteEventHelper = new DeleteEventHelper(mContext, parentActivity,
                 parentActivity != null /* exit when done */);
         deleteEventHelper.delete(startMillis, endMillis, eventId, deleteWhich);
     }
 
-//    private void launchAlerts() {
-//        Intent intent = new Intent();
-//        intent.setClass(mContext, AlertActivity.class);
-//        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-//        mContext.startActivity(intent);
-//    }
+    // private void launchAlerts() {
+    // Intent intent = new Intent();
+    // intent.setClass(mContext, AlertActivity.class);
+    // intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+    // mContext.startActivity(intent);
+    // }
 
     private void launchSearch(long eventId, String query, ComponentName componentName) {
-        final SearchManager searchManager =
-                (SearchManager) mContext.getSystemService(Context.SEARCH_SERVICE);
+        final SearchManager searchManager = (SearchManager) mContext.getSystemService(Context.SEARCH_SERVICE);
         final SearchableInfo searchableInfo = searchManager.getSearchableInfo(componentName);
         final Intent intent = new Intent(Intent.ACTION_SEARCH);
         intent.putExtra(SearchManager.QUERY, query);
@@ -785,7 +763,7 @@ private void launchEventActions(EventInfo event) {
         public long id; // event id
         public Time selectedTime; // the selected time in focus
 
-        // Event start and end times.  All-day events are represented in:
+        // Event start and end times. All-day events are represented in:
         // - local time for GO_TO commands
         // - UTC time for VIEW_EVENT and other event-related commands
         public Time startTime;
@@ -794,7 +772,7 @@ private void launchEventActions(EventInfo event) {
         public int x; // x coordinate in the activity space
         public int y; // y coordinate in the activity space
         public String query; // query for a user search
-        public ComponentName componentName;  // used in combination with query
+        public ComponentName componentName; // used in combination with query
         public String eventTitle;
         public long calendarId;
 
@@ -812,8 +790,10 @@ private void launchEventActions(EventInfo event) {
          * For EventType.GO_TO:
          * Set to {@link #EXTRA_GOTO_TIME} to go to the specified date/time.
          * Set to {@link #EXTRA_GOTO_DATE} to consider the date but ignore the time.
-         * Set to {@link #EXTRA_GOTO_BACK_TO_PREVIOUS} if back should bring back previous view.
-         * Set to {@link #EXTRA_GOTO_TODAY} if this is a user request to go to the current time.
+         * Set to {@link #EXTRA_GOTO_BACK_TO_PREVIOUS} if back should bring back
+         * previous view.
+         * Set to {@link #EXTRA_GOTO_TODAY} if this is a user request to go to the
+         * current time.
          * <p/>
          * For EventType.UPDATE_TITLE:
          * Set formatting flags for Utils.formatDateRange
@@ -876,5 +856,3 @@ private void launchEventActions(EventInfo event) {
         }
     }
 }
-
-
